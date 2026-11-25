@@ -7,7 +7,7 @@ O site é feito só com HTML, CSS e JavaScript, sem build, e pode ser hospedado 
 
 - **Jogar**: 7 missões com o robô Bit. A turma monta o programa carta por carta e o "Computador" roda o programa passo a passo, parando na linha do bug.
 - **Estudar**: quiz de múltipla escolha com 34 perguntas em 6 temas (10 por rodada, com pontos, sequência de acertos e medalha).
-- **Professor**: área com senha para imprimir as cartas (63 × 88 mm, 9 por folha A4) e o gabarito.
+- **Professor**: área com senha com o **Guia da aula** (roteiro de 20 min com relógio, falas prontas, exemplos e dicas de improviso) e a impressão das cartas (63 × 88 mm, 9 por folha A4) com gabarito.
 
 Senha padrão do professor: **`bit2026`**. Dá para trocar dentro da área do professor; a nova senha fica salva só no navegador onde foi trocada.
 > Em um site estático a senha só impede o acesso de curiosos. Não guarde nada secreto aqui.
@@ -27,7 +27,7 @@ Senha padrão do professor: **`bit2026`**. Dá para trocar dentro da área do pr
 3. No GitHub, abra **Settings → Pages**, escolha **Deploy from a branch**, branch `main`, pasta `/ (root)` e salve.
 4. Em 1 ou 2 minutos o site estará em `https://SEU-USUARIO.github.io/missao-bit/`.
 
-Pelo endereço do GitHub Pages, o app pode ser **instalado** no celular ou no PC ("Adicionar à tela inicial" ou "Instalar app" no navegador) e funciona **offline** depois da primeira visita.
+Pelo endereço do GitHub Pages, o app pode ser **instalado** no celular ou no PC ("Adicionar à tela inicial" ou "Instalar app" no navegador) e funciona **100% offline** depois da primeira visita. O botão **📲 Instalar app** no topo do site abre o instalador (ou mostra o passo a passo no iPhone).
 
 Ao alterar arquivos depois de publicado, aumente a versão em `sw.js` (ex.: `missao-bit-v2` → `missao-bit-v3`) para os aparelhos baixarem a versão nova.
 
@@ -46,7 +46,8 @@ Na janela de impressão escolha papel **A4**, margens **Nenhuma** e marque **Gr�
 index.html            página única do app
 css/style.css         visual (tema claro/escuro, celular, impressão)
 js/data.js            cartas, missões e perguntas (edite aqui para criar novas)
-js/app.js             lógica do jogo, quiz e área do professor
+js/app.js             lógica do jogo, quiz, guia e área do professor
+fonts/                fontes locais (o app não depende de internet)
 manifest.webmanifest  dados do app instalável
 sw.js                 modo offline
 icons/                ícones do app

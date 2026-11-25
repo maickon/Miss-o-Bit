@@ -777,14 +777,29 @@
   function renderAdmin() {
     if (session.get('admin') !== '1') return renderLogin();
     const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
-    $('#v-professor').innerHTML = `
+    const tab = session.get('atab') || 'guia';
+    const head = `
       <div class="page-head no-print">
         <div>
           <h1>Área do professor</h1>
-          <p>Escolha o que imprimir. As cartas saem no tamanho de baralho (63 × 88 mm), 9 por folha A4. Recorte nas linhas tracejadas.</p>
+          <p>${tab === 'guia' ? 'Seu roteiro para dar a aula com o Missão Bit, do primeiro "bom dia" ao fechamento.' : 'Escolha o que imprimir. As cartas saem no tamanho de baralho (63 × 88 mm), 9 por folha A4. Recorte nas linhas tracejadas.'}</p>
         </div>
         <button class="btn small ghost" id="a-logout">🔒 Sair</button>
       </div>
+      <div class="tabs no-print" role="tablist" aria-label="Seções do professor">
+        <button role="tab" data-tab="guia" aria-selected="${tab === 'guia'}">📘 Guia da aula</button>
+        <button role="tab" data-tab="imprimir" aria-selected="${tab === 'imprimir'}">🖨️ Imprimir cartas</button>
+      </div>`;
+    const bindHead = () => {
+      $('#a-logout').onclick = () => { session.set('admin', null); renderAdmin(); };
+      $$('[data-tab]').forEach(b => { b.onclick = () => { session.set('atab', b.dataset.tab); renderAdmin(); window.scrollTo(0, 0); }; });
+    };
+    if (tab === 'guia') {
+      $('#v-professor').innerHTML = head + guideHTML(inFrame);
+      bindHead(); bindGuide();
+      return;
+    }
+    $('#v-professor').innerHTML = head + `
       <div class="admin-grid">
         <div class="admin-side no-print">
           <div class="panel">
@@ -836,7 +851,7 @@
     $('#mv-copies').value = String(PRINT.moveCopies || 1);
     $('#mv-copies').onchange = e => { PRINT.moveCopies = +e.target.value; store.set('print', PRINT); drawSheets(); };
     $('#a-print').onclick = () => window.print();
-    $('#a-logout').onclick = () => { session.set('admin', null); renderAdmin(); };
+    bindHead();
     $('#a-reset').onclick = e => {
       const b = e.currentTarget;
       if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = 'Tem certeza? Toque de novo'; return; }
@@ -850,6 +865,227 @@
       store.set('passHash', passHash(a)); msg.hidden = true; e.target.reset(); toast('Senha trocada!');
     };
     drawSheets();
+  }
+
+  /* ----- Guia da aula ----- */
+  const PHASES = [
+    { from: 0, to: 3, icon: '🤖', title: 'Abertura: "Eu sou um robô"', text: 'Vire o robô e deixe a turma te dar ordens. Faça tudo ao pé da letra.' },
+    { from: 3, to: 6, icon: '💡', title: 'Mini-aula: algoritmo e variável', text: 'Escovar os dentes (algoritmo) e a caixa de PONTOS (variável).' },
+    { from: 6, to: 8, icon: '🃏', title: 'Regras do jogo', text: 'Mostre as cores das cartas, a mesa aberta e o crachá do Computador.' },
+    { from: 8, to: 16, icon: '🎮', title: 'Missões', text: '🚗 Ligar o carro → ➕ Figurinhas → 🔋 Pedra no caminho.' },
+    { from: 16, to: 18, icon: '🏁', title: 'Grande final', text: 'Rode de novo a missão da pedra com a outra Surpresa. Comemorem!' },
+    { from: 18, to: 20, icon: '🎤', title: 'Fechamento', text: 'Três perguntas rápidas e a frase final.' }
+  ];
+  const CHECKLIST = [
+    'Cartas impressas, recortadas e separadas por cor',
+    'Missões separadas na ordem: 2 Carro, 3 Figurinhas, 5 Pedra (as outras ficam de reserva)',
+    'Fita crepe ou ímãs para colar o programa no quadro',
+    '3 caixinhas com etiqueta A, B e TOTAL + 5 figurinhas de papel',
+    'Um estojo para ser a "pedra" e uma cadeira para ser o "carro"',
+    'Crachá "Eu sou o Computador" pendurado no pescoço',
+    'Site aberto na tela interativa (de preferência instalado, para funcionar sem internet)',
+    'Som do app ligado e volume da sala testado',
+    'Ensaiar a voz de robô e o "COMPILANDO... bip bop" 😄'
+  ];
+  const T = { start: 0, acc: 0, running: false, timer: null };
+  const elapsed = () => T.acc + (T.running ? Date.now() - T.start : 0);
+  const fmt = ms => { const s = Math.floor(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+
+  function say(text) { return `<blockquote class="say"><span>Fale</span>${text}</blockquote>`; }
+  function guideHTML(inFrame) {
+    const done = store.get('checklist', []);
+    return `
+    <div class="guide">
+      <div class="g-summary">
+        <div><b>Tema</b><span>Introdução à Lógica de Programação</span></div>
+        <div><b>Turma</b><span>Crianças de 8 anos</span></div>
+        <div><b>Duração</b><span>20 minutos</span></div>
+        <div><b>Objetivo</b><span>Ao final, cada criança sabe dizer o que é algoritmo e variável, e já usou SE e REPITA brincando.</span></div>
+      </div>
+
+      <section class="g-block no-print" aria-labelledby="g-timer-t">
+        <div class="g-timer">
+          <div>
+            <h2 id="g-timer-t">⏱️ Relógio da aula</h2>
+            <p class="note" style="margin:2px 0 0">Aperte Iniciar quando disser "bom dia". A fase atual fica destacada.</p>
+          </div>
+          <div class="g-clock" id="g-clock">${fmt(elapsed())}</div>
+          <div class="g-timer-btns">
+            <button class="btn small go" id="g-start">${T.running ? '⏸ Pausar' : '▶ Iniciar'}</button>
+            <button class="btn small" id="g-reset">↺ Zerar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="g-block" aria-labelledby="g-plan-t">
+        <h2 id="g-plan-t">🗺️ Roteiro de 20 minutos</h2>
+        <ol class="phases" id="g-phases">
+          ${PHASES.map((p, i) => `<li data-ph="${i}"><span class="ph-time">${p.from}–${p.to} min</span><span class="ph-ico">${p.icon}</span><div><b>${p.title}</b><p>${p.text}</p></div></li>`).join('')}
+        </ol>
+        <p class="note">Os 3 pilares do CNA aparecem assim: <b>Divertir</b> (robô e bugs engraçados), <b>Ensinar</b> (conceitos com exemplos do dia a dia) e <b>Desenvolver</b> (a turma monta e conserta o programa em equipe).</p>
+      </section>
+
+      <section class="g-block" aria-labelledby="g-check-t">
+        <h2 id="g-check-t">✅ Antes da aula</h2>
+        <div class="g-checks">
+          ${CHECKLIST.map((c, i) => `<label><input type="checkbox" data-ck="${i}" ${done.includes(i) ? 'checked' : ''}> ${esc(c)}</label>`).join('')}
+        </div>
+      </section>
+
+      <section class="g-block" aria-labelledby="g-why-t">
+        <h2 id="g-why-t">🤔 Explico lógica antes de jogar?</h2>
+        <p><b>Sim, mas pouco: uns 3 minutos.</b> Criança de 8 anos aprende fazendo. Apresente só <b>algoritmo</b> e <b>variável</b> antes do jogo, porque são os dois conceitos pedidos na aula. O <b>SE</b> e o <b>REPITA</b> você explica na hora em que a carta aparecer na missão. Fica mais fácil de entender e não cansa a turma.</p>
+        <p>Regra de ouro: <b>uma ideia, um exemplo, uma pergunta</b>. Depois passe para a próxima.</p>
+      </section>
+
+      <section class="g-block" aria-labelledby="g-open-t">
+        <h2 id="g-open-t">🤖 Como começar a falar (0–3 min)</h2>
+        ${say('Bom dia, turma! Hoje eu não sou o professor... <i>(voz de robô)</i> BIP BOP. Eu sou um ROBÔ! E robô só faz EXATAMENTE o que mandam. Quem quer me dar uma ordem?')}
+        <p>Uma criança vai falar algo como "anda!" ou "pega o giz". Obedeça <b>ao pé da letra</b>:</p>
+        <ul>
+          <li>"Anda!" → ande sem parar até a parede. Pergunte: <i>"Vocês não falaram quantos passos!"</i></li>
+          <li>"Senta!" → sente no chão, não na cadeira.</li>
+          <li>"Pega o giz!" → fique parado: <i>"Qual mão? Onde está o giz?"</i></li>
+        </ul>
+        ${say('Viram? O computador é assim: ele não adivinha. A gente precisa dar instruções claras e na ordem certa.')}
+      </section>
+
+      <section class="g-block" aria-labelledby="g-concepts-t">
+        <h2 id="g-concepts-t">💡 Os conceitos, com exemplos prontos</h2>
+        <div class="concepts">
+          <article class="concept k-acao">
+            <h3><i class="dot"></i>Algoritmo <small>antes do jogo</small></h3>
+            ${say('Uma lista de passos em ordem tem um nome difícil: ALGORITMO. É como uma receita de bolo!')}
+            <p><b>Exemplo:</b> escovar os dentes. Peça para a turma ditar os passos. Se pularem "colocar a pasta", escove sem pasta e faça cara de nojo.</p>
+            <p><b>Pergunte:</b> "O que acontece se eu enxaguar antes de escovar?"</p>
+          </article>
+          <article class="concept k-caixa">
+            <h3><i class="dot"></i>Variável <small>antes do jogo</small></h3>
+            ${say('O computador guarda as coisas em caixinhas com nome. O que tem dentro pode mudar. Por isso se chama VARIÁVEL!')}
+            <p><b>Exemplo:</b> mostre a caixa PONTOS com 2 papéis. "Acertei uma pergunta!" Coloque mais 1. "Quanto tem agora?" → 3.</p>
+            <p><b>Pergunte:</b> "Que nome daria para a caixa que guarda a sua idade?"</p>
+          </article>
+          <article class="concept k-se">
+            <h3><i class="dot"></i>Condição (SE) <small>na missão</small></h3>
+            ${say('SE estiver chovendo, eu levo guarda-chuva. SENÃO, eu levo boné. O computador também toma decisões assim!')}
+            <p><b>Exemplo:</b> semáforo. "SE estiver vermelho..." (a turma completa: "PARA!").</p>
+            <p><b>Momento:</b> quando a carta verde aparecer na missão da Pedra ou do Clima.</p>
+          </article>
+          <article class="concept k-repita">
+            <h3><i class="dot"></i>Repetição (REPITA) <small>na missão</small></h3>
+            ${say('Bate palma, bate palma, bate palma... cansei! Vou escrever só uma vez: REPITA 3 vezes, bater palma.')}
+            <p><b>Exemplo:</b> a turma bate palmas junto com você.</p>
+            <p><b>Momento:</b> missão 7 (Até a porta), se der tempo, ou só a fala com palmas.</p>
+          </article>
+          <article class="concept k-coringa">
+            <h3><i class="dot"></i>Bug <small>o tempo todo</small></h3>
+            ${say('Quando o programa dá errado, a gente chama de BUG. Todo programador do mundo tem bugs. O segredo é achar e consertar!')}
+            <p><b>Atitude:</b> comemore quando acharem um bug. Errar faz parte do jogo.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="g-block" aria-labelledby="g-rules-t">
+        <h2 id="g-rules-t">🃏 Explicando as regras (6–8 min)</h2>
+        <ol>
+          <li>Coloque o crachá: ${say('Agora eu sou o COMPUTADOR. Vocês são os PROGRAMADORES.')}</li>
+          <li>Mostre uma carta de cada cor: azul faz uma ação, amarela é a caixa, verde é o SE, vermelha é o REPITA.</li>
+          <li>Leia a missão e mostre os espaços vazios: "Nosso programa tem 4 linhas."</li>
+          <li>Cada um, na sua vez, coloca 1 carta. Pode pedir ajuda ao colega.</li>
+          <li>Antes de rodar, todo mundo vota: 👍 certo ou 👎 tem bug.</li>
+        </ol>
+      </section>
+
+      <section class="g-block" aria-labelledby="g-play-t">
+        <h2 id="g-play-t">🖥️ Durante o jogo: seu papel de Computador</h2>
+        <ul class="g-list">
+          <li>Antes de rodar, fale <b>"COMPILANDO... bip bop"</b> e leia cada carta em voz alta, executando de verdade.</li>
+          <li>Se der bug, <b>congele</b>: <i>"ERRO NA LINHA 3!"</i>, e pergunte: <i>"Quem acha o bug?"</i></li>
+          <li>Faça a besteira acontecer: sentar sem abrir a porta, tirar a pedra que não existe... É aí que a turma ri e aprende.</li>
+          <li>Na missão da pedra, rode <b>duas vezes</b>: com pedra e sem pedra. Mostre que o mesmo programa funciona nos dois casos.</li>
+          <li>Elogie o processo, não só o acerto: <i>"Que bom que vocês acharam o bug!"</i></li>
+          <li>Na tela interativa, use o app para mostrar o robô andando depois que a turma montar com as cartas de papel.</li>
+        </ul>
+      </section>
+
+      <section class="g-block" aria-labelledby="g-impro-t">
+        <h2 id="g-impro-t">🆘 Se acontecer... faça assim</h2>
+        <div class="impro">
+          <div><b>Sobrou tempo</b><p>Jogue as missões 6 (Luz) e 7 (Porta), ou abra o "Estudar" na tela e a turma vota nas respostas.</p></div>
+          <div><b>Faltou tempo</b><p>Pule direto para a missão 5 (Pedra no caminho), que mostra o SE, e faça o fechamento.</p></div>
+          <div><b>Criança tímida</b><p>Dê um cargo: "Ajudante do Computador" (vira a carta Surpresa) ou "Caça-bugs oficial".</p></div>
+          <div><b>Criança que já sabe tudo</b><p>Desafie: "Existe outro caminho certo?" ou "Invente uma instrução com a carta Coringa".</p></div>
+          <div><b>Turma agitada</b><p>"O Computador TRAVOU!" Fique congelado. Só reinicia quando todos contarem juntos: 3, 2, 1, LIGA!</p></div>
+          <div><b>Ninguém acha o bug</b><p>Rode bem devagar, linha por linha, perguntando: "Essa linha está certa?"</p></div>
+          <div><b>Você errou algo</b><p>"Até o Computador tem bug! Quem me conserta?" Vira parte da brincadeira.</p></div>
+          <div><b>A tela ou a internet falhou</b><p>O jogo funciona só com as cartas de papel. O app instalado também funciona sem internet.</p></div>
+        </div>
+      </section>
+
+      <section class="g-block" aria-labelledby="g-close-t">
+        <h2 id="g-close-t">🎤 Fechamento (18–20 min)</h2>
+        <p>Três perguntas rápidas. A turma responde junta:</p>
+        <ol>
+          <li>"O que é um algoritmo?" → <i>passos em ordem</i></li>
+          <li>"O que a caixa guarda?" → <i>um valor, que pode mudar</i></li>
+          <li>"Quando usamos o SE?" → <i>para decidir</i></li>
+        </ol>
+        ${say('Hoje vocês foram PROGRAMADORES! Programar é dar instruções claras, na ordem certa, e consertar os bugs sem medo. BIP BOP, desligando!')}
+      </section>
+
+      <section class="g-block" aria-labelledby="g-cheat-t">
+        <h2 id="g-cheat-t">📝 Frases curinga</h2>
+        <div class="cheats">
+          <span>"Eu só faço o que vocês mandarem!"</span>
+          <span>"Quantos passos? Vocês não falaram!"</span>
+          <span>"COMPILANDO... bip bop"</span>
+          <span>"ERRO NA LINHA 2!"</span>
+          <span>"Quem acha o bug?"</span>
+          <span>"Todo mundo concorda? 👍 ou 👎"</span>
+          <span>"Existe outro jeito de resolver?"</span>
+          <span>"E se tivesse uma pedra no caminho?"</span>
+        </div>
+      </section>
+
+      <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="g-print" ${inFrame ? 'disabled' : ''}>🖨️ Imprimir este guia</button>
+        <button class="btn" data-go="missoes">🎮 Abrir as missões</button>
+      </div>
+    </div>`;
+  }
+
+  function paintTimer() {
+    const clock = $('#g-clock'); if (!clock) return;
+    const ms = elapsed();
+    clock.textContent = fmt(ms);
+    const min = ms / 60000;
+    clock.classList.toggle('over', min >= 20);
+    $$('#g-phases li').forEach(li => {
+      const p = PHASES[+li.dataset.ph];
+      li.classList.toggle('now', (T.running || ms > 0) && min >= p.from && min < p.to);
+      li.classList.toggle('past', min >= p.to);
+    });
+  }
+  function bindGuide() {
+    $('#g-start').onclick = e => {
+      if (T.running) { T.acc = elapsed(); T.running = false; clearInterval(T.timer); }
+      else { T.start = Date.now(); T.running = true; T.timer = setInterval(paintTimer, 500); }
+      e.currentTarget.textContent = T.running ? '⏸ Pausar' : '▶ Iniciar';
+      paintTimer();
+    };
+    $('#g-reset').onclick = () => {
+      T.acc = 0; T.start = Date.now();
+      if (!T.running) paintTimer(); else paintTimer();
+    };
+    $$('[data-ck]').forEach(cb => {
+      cb.onchange = () => {
+        const list = $$('[data-ck]').filter(x => x.checked).map(x => +x.dataset.ck);
+        store.set('checklist', list);
+      };
+    });
+    $('#g-print').onclick = () => window.print();
+    if (T.running && !T.timer) T.timer = setInterval(paintTimer, 500);
+    paintTimer();
   }
 
   function renderLogin() {
@@ -1002,7 +1238,48 @@
   function applyTheme(t) {
     if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme');
   }
+  /* ----- Instalação como app (PWA) ----- */
+  let installEvt = null;
+  const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  function installHelp() {
+    const ua = navigator.userAgent;
+    const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+    const android = /Android/.test(ua);
+    let html;
+    if (location.protocol === 'file:') {
+      html = '<p>Você abriu o arquivo direto do computador. Para instalar, abra o jogo pelo endereço do site (https://...) no Chrome ou no Edge.</p>';
+    } else if (ios) {
+      html = '<ol><li>Abra este site no <b>Safari</b>.</li><li>Toque no botão <b>Compartilhar</b> (quadrado com seta para cima).</li><li>Escolha <b>Adicionar à Tela de Início</b> e toque em <b>Adicionar</b>.</li></ol>';
+    } else if (android) {
+      html = '<ol><li>No <b>Chrome</b>, toque no menu <b>⋮</b> (canto de cima).</li><li>Escolha <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</li></ol>';
+    } else {
+      html = '<ol><li>No <b>Chrome</b> ou <b>Edge</b>, clique no ícone de instalar na barra de endereço (um monitor com seta ⤓), à direita.</li><li>Ou abra o menu <b>⋮</b> / <b>…</b> e escolha <b>Instalar Missão Bit</b> (no Edge: <b>Aplicativos → Instalar este site como aplicativo</b>).</li></ol>';
+    }
+    html += '<p class="note">Depois de instalado, o jogo abre como um app e funciona sem internet.</p>';
+    $('#ih-body').innerHTML = html;
+    $('#install-help').hidden = false;
+    $('#ih-close').focus();
+  }
+  function setupInstall() {
+    const btn = $('#btn-install');
+    btn.hidden = isStandalone();
+    window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; btn.hidden = false; });
+    window.addEventListener('appinstalled', () => { installEvt = null; btn.hidden = true; toast('App instalado! 🎉'); });
+    btn.onclick = async () => {
+      if (installEvt) {
+        installEvt.prompt();
+        try { await installEvt.userChoice; } catch (e) { /* ok */ }
+        installEvt = null;
+      } else installHelp();
+    };
+    const close = () => { $('#install-help').hidden = true; };
+    $('#ih-close').onclick = close;
+    $('#install-help').onclick = e => { if (e.target.id === 'install-help') close(); };
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  }
+
   function init() {
+    setupInstall();
     $('#brand-bit').innerHTML = bitSVG('happy');
     applyTheme(store.get('theme', null));
     $('#btn-theme').onclick = () => {
@@ -1024,6 +1301,8 @@
       const opt = $$('.opt')[n]; if (n >= 0 && opt) opt.click();
     });
     window.addEventListener('hashchange', route);
+    window.addEventListener('offline', () => toast('Sem internet. O jogo continua funcionando normalmente. 👍'));
+    window.addEventListener('online', () => toast('Internet de volta.'));
     route();
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('sw.js').catch(() => { /* sem modo offline */ });
