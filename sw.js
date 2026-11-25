@@ -1,6 +1,6 @@
 /* Service worker: deixa o Missão Bit funcionando offline depois da primeira visita.
    Ao mudar arquivos do site, aumente a versão abaixo para os aparelhos baixarem a nova versão. */
-const CACHE = 'missao-bit-v1';
+const CACHE = 'missao-bit-v2';
 const FILES = [
   './', 'index.html', 'css/style.css', 'js/data.js', 'js/app.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'

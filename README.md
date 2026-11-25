@@ -29,7 +29,7 @@ Senha padrão do professor: **`bit2026`**. Dá para trocar dentro da área do pr
 
 Pelo endereço do GitHub Pages, o app pode ser **instalado** no celular ou no PC ("Adicionar à tela inicial" ou "Instalar app" no navegador) e funciona **offline** depois da primeira visita.
 
-Ao alterar arquivos depois de publicado, aumente a versão em `sw.js` (`missao-bit-v1` → `missao-bit-v2`) para os aparelhos baixarem a versão nova.
+Ao alterar arquivos depois de publicado, aumente a versão em `sw.js` (ex.: `missao-bit-v2` → `missao-bit-v3`) para os aparelhos baixarem a versão nova.
 
 ## Testar no computador sem internet
 
